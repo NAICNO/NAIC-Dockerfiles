@@ -1,0 +1,10 @@
+name: gatk
+
+channels:
+  - bioconda
+
+dependencies:
+  - gatk4=4.4.0.0
+  - htslib=1.18
+  - samtools=1.18
+  - tabix=1.11
