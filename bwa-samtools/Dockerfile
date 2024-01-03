@@ -1,65 +1,26 @@
-FROM ubuntu:16.04
-ENV DEBIAN_FRONTEND noninteractive
+FROM ubuntu:18.04
 
-WORKDIR /tmp
+ENV DEBIAN_FRONTEND=noninteractive
 
-### Install required packages
+RUN apt-get update -qq \
+  && apt-get install -qq bzip2 gcc g++ make zlib1g-dev wget libncurses5-dev liblzma-dev libbz2-dev pigz libcurl4-openssl-dev
 
-RUN apt-get clean all &&\
-    apt-get update && \
-    apt-get install -y \
-        zlib1g-dev \
-        build-essential \
-        curl \
-        libncurses5-dev \
-        git && \
-    apt-get clean && \
-    apt-get purge && \
-    rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* /usr/share/doc/*
+ENV BWA_VERSION 0.7.17
+ENV SAMTOOLS_VERSION 1.18
 
+RUN cd /opt/ \
+    && wget https://github.com/lh3/bwa/releases/download/v${BWA_VERSION}/bwa-${BWA_VERSION}.tar.bz2 \
+    && tar -xjf bwa-${BWA_VERSION}.tar.bz2 \
+    && rm -f bwa-${BWA_VERSION}.tar.bz2 \
+    && cd /opt/bwa-${BWA_VERSION}/ \
+    && make
 
-### Install bwa
+RUN cd /opt/ \
+    && wget https://github.com/samtools/samtools/releases/download/${SAMTOOLS_VERSION}/samtools-${SAMTOOLS_VERSION}.tar.bz2 \
+    && tar -xjf samtools-${SAMTOOLS_VERSION}.tar.bz2 \
+    && rm -rf samtools-${SAMTOOLS_VERSION}.tar.bz2  \
+    && cd samtools-${SAMTOOLS_VERSION}/ \
+    && make && make install
 
-ENV VERSION 0.7.17
-ENV NAME bwa
-ENV URL "https://github.com/lh3/bwa/archive/refs/tags/v${VERSION}.tar.gz"
-
-RUN curl -SL $URL | tar -zxv && \
-    cd ${NAME}-${VERSION} && \
-    make -j 4 && \
-    cd .. && \
-    cp ./${NAME}-${VERSION}/${NAME} /usr/local/bin/ && \
-    strip /usr/local/bin/${NAME}; true && \
-    rm -rf ./${NAME}-${VERSION}/
-
-
-### Installing samtools/htslib/tabix/bgzip
-
-ENV HTSLIB htslib
-ENV HTSLIBV 1.18
-ENV HTSLIBSHA1 "d8ca374b1977601246ce4a20370c7b78441a01aa"
-
-ENV SAMTOOLS "samtools"
-ENV SAMTOOLSV 1.18
-ENV SAMTOOLSSHA1 "554bb9043a2da9ea5db85095dce21b742ba1fb71"
-
-RUN git clone https://github.com/samtools/htslib.git && \
-    cd ${HTSLIB} && \
-    git reset --hard ${HTSLIBSHA1} && \
-    make -j 4 && \
-    cd .. && \
-    cp ./${HTSLIB}/tabix /usr/local/bin/ && \
-    cp ./${HTSLIB}/bgzip /usr/local/bin/ && \
-    cp ./${HTSLIB}/htsfile /usr/local/bin/ && \
-    strip /usr/local/bin/tabix; true && \
-    strip /usr/local/bin/bgzip; true && \
-    strip /usr/local/bin/htsfile; true && \
-git clone https://github.com/samtools/samtools.git && \
-    cd ${SAMTOOLS} && \
-    git reset --hard ${SAMTOOLSSHA1} && \
-    make -j 4 && \
-    cp ./${SAMTOOLS} /usr/local/bin/ && \
-    cd .. && \
-    strip /usr/local/bin/${SAMTOOLS}; true && \
-    rm -rf ./${HTSLIB}/ && \
-    rm -rf ./${SAMTOOLS}
+  
+ENV PATH="/opt/bwa-${BWA_VERSION}/:/opt/samtools-${SAMTOOLS_VERSION}/:${PATH}"
